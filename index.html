@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <title>드론 정사영상 도로 탐지 시각화</title>
+    <meta name="viewport" content="initial-scale=1,maximum-scale=1,user-scalable=no" />
+    
+    <!-- Mapbox GL JS -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mapbox-gl/2.15.0/mapbox-gl.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/mapbox-gl/2.15.0/mapbox-gl.css" rel="stylesheet" />
+    
+    <!-- Turf.js for GeoJSON processing -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Turf.js/6.5.0/turf.min.js"></script>
+
+    <style>
+        body { margin: 0; padding: 0; }
+        #map { position: absolute; top: 0; bottom: 0; width: 100%; }
+        
+        .control-panel {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            padding: 10px;
+            background-color: rgba(255, 255, 255, 0.9);
+            border-radius: 5px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.2);
+            z-index: 1;
+            width: 250px;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+        
+        .title {
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+        
+        .layer-control {
+            margin-top: 10px;
+            padding-top: 10px;
+            border-top: 1px solid #ccc;
+        }
+        
+        .opacity-control {
+            margin-top: 15px;
+        }
+        
+        .color-box {
+            display: inline-block;
+            width: 15px;
+            height: 15px;
+            margin-right: 5px;
+            vertical-align: middle;
+        }
+        
+        .stats-panel {
+            margin-top: 20px;
+            padding-top: 10px;
+            border-top: 1px solid #ccc;
+        }
+        
+        .stats-title {
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        
+        .loading-indicator {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: rgba(255, 255, 255, 0.8);
+            padding: 15px 20px;
+            border-radius: 5px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.2);
+            z-index: 10;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+        }
+        
+        .spinner {
+            border: 5px solid #f3f3f3;
+            border-top: 5px solid #3498db;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+            margin-bottom: 10px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .loading-text {
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div id="map"></div>
+    
+    <div id="loading-indicator" class="loading-indicator">
+        <div class="spinner"></div>
+        <div class="loading-text">지도 로딩 중...</div>
+    </div>
+    
+    <div class="control-panel">
+        <div class="title">도로 탐지 결과</div>
+        
+        <div class="layer-control">
+            <label>
+                <input type="checkbox" id="drone-imagery" checked disabled />
+                드론 정사영상 표시
+            </label>
+            <div class="opacity-control">
+                <label>정사영상 투명도: <span id="opacity-value">100%</span></label>
+                <input type="range" id="opacity-slider" min="0" max="100" value="100" />
+            </div>
+        </div>
+        
+        <div class="layer-control">
+            <label>
+                <input type="checkbox" id="roads" checked disabled />
+                <div class="color-box" style="background-color: #FF5733;"></div>
+                도로 탐지 결과
+            </label>
+        </div>
+        
+        <div class="stats-panel">
+            <div class="stats-title">통계</div>
+            <div id="stats-content">
+                <p><strong>도로 면적:</strong> <span id="road-area">0</span> m²</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // GeoJSON 파일 경로 (임시로 로컬 경로, 나중에 GitHub URL로 변경)
+        const roadsGeojsonPath = '/road_SEG_visualization/data/roads_simplified_4326.geojson'; // 수정 필요
+        
+        // Mapbox 토큰
+        const mapboxToken = 'pk.eyJ1Ijoia2ltcHlrMzY1IiwiYSI6ImNtMHZ0YjJreTFqMWkyanBsdG1rYzNna2EifQ.uO2Mr3dd8pnztKfGtZLFCw';
+        mapboxgl.accessToken = mapboxToken;
+
+        const map = new mapboxgl.Map({
+            container: 'map',
+            style: {
+                version: 8,
+                sources: {},
+                layers: []
+            },
+            center: [126.9374958771179, 37.5375002076363],
+            zoom: 16,
+            maxZoom: 20,
+            minZoom: 14,
+            renderWorldCopies: false
+        });
+
+        let tilesetLoaded = false;
+        let roadsLoaded = false;
+
+        map.on('load', function() {
+            map.fitBounds([
+                [126.9244086784872678, 37.5245364496177416],
+                [126.9505830757485825, 37.5504639656548918]
+            ]);
+
+            const tilesetId = 'kimpyk365.3yckxotp';
+
+            try {
+                map.addSource('raster-tiles', {
+                    'type': 'raster',
+                    'url': `mapbox://${tilesetId}`,
+                    'tileSize': 256
+                });
+
+                map.addLayer({
+                    'id': 'raster-tiles',
+                    'type': 'raster',
+                    'source': 'raster-tiles',
+                    'paint': {
+                        'raster-opacity': 1
+                    }
+                });
+
+                tilesetLoaded = true;
+                document.getElementById('drone-imagery').disabled = false;
+                document.getElementById('drone-imagery').checked = true;
+
+                loadRoads();
+            } catch (error) {
+                console.error('타일셋 로드 오류:', error);
+                document.getElementById('loading-indicator').querySelector('.loading-text').textContent = '타일셋 로드 실패';
+                setTimeout(() => {
+                    document.getElementById('loading-indicator').style.display = 'none';
+                }, 2000);
+            }
+        });
+
+        function loadRoads() {
+            if (roadsLoaded) return;
+
+            const loadingIndicator = document.getElementById('loading-indicator');
+            const loadingText = loadingIndicator.querySelector('.loading-text');
+
+            loadingIndicator.style.display = 'flex';
+            loadingText.textContent = '도로 데이터 로딩 중...';
+
+            fetch(roadsGeojsonPath)
+                .then(response => response.json())
+                .then(data => {
+                    console.log('도로 데이터 로드 완료');
+
+                    map.addSource('roads-source', {
+                        'type': 'geojson',
+                        'data': data
+                    });
+
+                    map.addLayer({
+                        'id': 'roads-layer',
+                        'type': 'fill',
+                        'source': 'roads-source',
+                        'paint': {
+                            'fill-color': '#FF5733',
+                            'fill-opacity': 0.7,
+                            'fill-outline-color': '#FF0000'
+                        }
+                    });
+
+                    roadsLoaded = true;
+                    document.getElementById('roads').disabled = false;
+
+                    // 도로 면적 계산 (Turf.js 사용)
+                    const area = turf.area(data);
+                    document.getElementById('road-area').textContent = Math.round(area);
+
+                    loadingIndicator.style.display = 'none';
+                })
+                .catch(error => {
+                    console.error('도로 데이터 로드 오류:', error);
+                    loadingText.textContent = '도로 데이터 로드 실패';
+                    setTimeout(() => {
+                        loadingIndicator.style.display = 'none';
+                    }, 2000);
+                });
+        }
+
+        document.getElementById('roads').addEventListener('change', function(e) {
+            if (roadsLoaded) {
+                map.setLayoutProperty('roads-layer', 'visibility', e.target.checked ? 'visible' : 'none');
+            }
+        });
+
+        document.getElementById('drone-imagery').addEventListener('change', function(e) {
+            if (tilesetLoaded) {
+                map.setLayoutProperty('raster-tiles', 'visibility', e.target.checked ? 'visible' : 'none');
+            }
+        });
+
+        document.getElementById('opacity-slider').addEventListener('input', function(e) {
+            const opacity = parseInt(e.target.value, 10) / 100;
+            if (tilesetLoaded) {
+                map.setPaintProperty('raster-tiles', 'raster-opacity', opacity);
+            }
+            document.getElementById('opacity-value').textContent = e.target.value + '%';
+        });
+    </script>
+</body>
+</html>
