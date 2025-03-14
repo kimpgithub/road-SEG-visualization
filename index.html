@@ -111,7 +111,7 @@
     </div>
     
     <div class="control-panel">
-        <div class="title">도로 탐지 결과</div>
+        <div class="title">도로 탐지 결과 비교</div>
         
         <div class="layer-control">
             <label>
@@ -126,23 +126,33 @@
         
         <div class="layer-control">
             <label>
-                <input type="checkbox" id="roads" checked disabled />
+                <input type="checkbox" id="ovision-roads" checked disabled />
                 <div class="color-box" style="background-color: #FF5733;"></div>
-                도로 탐지 결과
+                Ovision 도로 탐지
+            </label>
+        </div>
+        
+        <div class="layer-control">
+            <label>
+                <input type="checkbox" id="merged-roads" checked disabled />
+                <div class="color-box" style="background-color: #33A1FF;"></div>
+                병합된 도로 탐지
             </label>
         </div>
         
         <div class="stats-panel">
             <div class="stats-title">통계</div>
             <div id="stats-content">
-                <p><strong>도로 면적:</strong> <span id="road-area">0</span> m²</p>
+                <p><strong>Ovision 도로 면적:</strong> <span id="ovision-road-area">0</span> m²</p>
+                <p><strong>병합된 도로 면적:</strong> <span id="merged-road-area">0</span> m²</p>
             </div>
         </div>
     </div>
 
     <script>
-        // GeoJSON 파일 경로 (임시로 로컬 경로, 나중에 GitHub URL로 변경)
-        const roadsGeojsonPath = '/road_SEG_visualization/data/roads_simplified_4326.geojson'; // 수정 필요
+        // GeoJSON 파일 경로 (GitHub Pages용 raw URL)
+        const ovisionRoadsGeojsonPath = 'https://raw.githubusercontent.com/kimpgithub/road-SEG-visualization/master/data/ovision_road_4326.geojson';
+        const mergedRoadsGeojsonPath = 'https://raw.githubusercontent.com/kimpgithub/road-SEG-visualization/master/data/roads_merged_4326.geojson';
         
         // Mapbox 토큰
         const mapboxToken = 'pk.eyJ1Ijoia2ltcHlrMzY1IiwiYSI6ImNtMHZ0YjJreTFqMWkyanBsdG1rYzNna2EifQ.uO2Mr3dd8pnztKfGtZLFCw';
@@ -163,7 +173,8 @@
         });
 
         let tilesetLoaded = false;
-        let roadsLoaded = false;
+        let ovisionRoadsLoaded = false;
+        let mergedRoadsLoaded = false;
 
         map.on('load', function() {
             map.fitBounds([
@@ -193,7 +204,8 @@
                 document.getElementById('drone-imagery').disabled = false;
                 document.getElementById('drone-imagery').checked = true;
 
-                loadRoads();
+                loadOvisionRoads();
+                loadMergedRoads();
             } catch (error) {
                 console.error('타일셋 로드 오류:', error);
                 document.getElementById('loading-indicator').querySelector('.loading-text').textContent = '타일셋 로드 실패';
@@ -203,29 +215,32 @@
             }
         });
 
-        function loadRoads() {
-            if (roadsLoaded) return;
+        function loadOvisionRoads() {
+            if (ovisionRoadsLoaded) return;
 
             const loadingIndicator = document.getElementById('loading-indicator');
             const loadingText = loadingIndicator.querySelector('.loading-text');
 
             loadingIndicator.style.display = 'flex';
-            loadingText.textContent = '도로 데이터 로딩 중...';
+            loadingText.textContent = 'Ovision 도로 데이터 로딩 중...';
 
-            fetch(roadsGeojsonPath)
-                .then(response => response.json())
+            fetch(ovisionRoadsGeojsonPath)
+                .then(response => {
+                    if (!response.ok) throw new Error('Ovision GeoJSON 로드 실패');
+                    return response.json();
+                })
                 .then(data => {
-                    console.log('도로 데이터 로드 완료');
+                    console.log('Ovision 도로 데이터 로드 완료');
 
-                    map.addSource('roads-source', {
+                    map.addSource('ovision-roads-source', {
                         'type': 'geojson',
                         'data': data
                     });
 
                     map.addLayer({
-                        'id': 'roads-layer',
+                        'id': 'ovision-roads-layer',
                         'type': 'fill',
-                        'source': 'roads-source',
+                        'source': 'ovision-roads-source',
                         'paint': {
                             'fill-color': '#FF5733',
                             'fill-opacity': 0.7,
@@ -233,27 +248,82 @@
                         }
                     });
 
-                    roadsLoaded = true;
-                    document.getElementById('roads').disabled = false;
+                    ovisionRoadsLoaded = true;
+                    document.getElementById('ovision-roads').disabled = false;
 
-                    // 도로 면적 계산 (Turf.js 사용)
                     const area = turf.area(data);
-                    document.getElementById('road-area').textContent = Math.round(area);
+                    document.getElementById('ovision-road-area').textContent = Math.round(area);
 
                     loadingIndicator.style.display = 'none';
                 })
                 .catch(error => {
-                    console.error('도로 데이터 로드 오류:', error);
-                    loadingText.textContent = '도로 데이터 로드 실패';
+                    console.error('Ovision 도로 데이터 로드 오류:', error);
+                    loadingText.textContent = 'Ovision 도로 데이터 로드 실패';
                     setTimeout(() => {
                         loadingIndicator.style.display = 'none';
                     }, 2000);
                 });
         }
 
-        document.getElementById('roads').addEventListener('change', function(e) {
-            if (roadsLoaded) {
-                map.setLayoutProperty('roads-layer', 'visibility', e.target.checked ? 'visible' : 'none');
+        function loadMergedRoads() {
+            if (mergedRoadsLoaded) return;
+
+            const loadingIndicator = document.getElementById('loading-indicator');
+            const loadingText = loadingIndicator.querySelector('.loading-text');
+
+            loadingIndicator.style.display = 'flex';
+            loadingText.textContent = '병합된 도로 데이터 로딩 중...';
+
+            fetch(mergedRoadsGeojsonPath)
+                .then(response => {
+                    if (!response.ok) throw new Error('Merged GeoJSON 로드 실패');
+                    return response.json();
+                })
+                .then(data => {
+                    console.log('병합된 도로 데이터 로드 완료');
+
+                    map.addSource('merged-roads-source', {
+                        'type': 'geojson',
+                        'data': data
+                    });
+
+                    map.addLayer({
+                        'id': 'merged-roads-layer',
+                        'type': 'fill',
+                        'source': 'merged-roads-source',
+                        'paint': {
+                            'fill-color': '#33A1FF',
+                            'fill-opacity': 0.7,
+                            'fill-outline-color': '#0000FF'
+                        }
+                    });
+
+                    mergedRoadsLoaded = true;
+                    document.getElementById('merged-roads').disabled = false;
+
+                    const area = turf.area(data);
+                    document.getElementById('merged-road-area').textContent = Math.round(area);
+
+                    loadingIndicator.style.display = 'none';
+                })
+                .catch(error => {
+                    console.error('병합된 도로 데이터 로드 오류:', error);
+                    loadingText.textContent = '병합된 도로 데이터 로드 실패';
+                    setTimeout(() => {
+                        loadingIndicator.style.display = 'none';
+                    }, 2000);
+                });
+        }
+
+        document.getElementById('ovision-roads').addEventListener('change', function(e) {
+            if (ovisionRoadsLoaded) {
+                map.setLayoutProperty('ovision-roads-layer', 'visibility', e.target.checked ? 'visible' : 'none');
+            }
+        });
+
+        document.getElementById('merged-roads').addEventListener('change', function(e) {
+            if (mergedRoadsLoaded) {
+                map.setLayoutProperty('merged-roads-layer', 'visibility', e.target.checked ? 'visible' : 'none');
             }
         });
 
