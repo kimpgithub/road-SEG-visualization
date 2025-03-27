@@ -139,12 +139,30 @@
                 병합된 도로 탐지
             </label>
         </div>
+
+        <div class="layer-control">
+            <label>
+                <input type="checkbox" id="unet3-roads" checked disabled />
+                <div class="color-box" style="background-color: #FF33A1;"></div>
+                U-Net 3 도로 탐지
+            </label>
+        </div>
+
+        <div class="layer-control">
+            <label>
+                <input type="checkbox" id="ground-truth-roads" checked disabled />
+                <div class="color-box" style="background-color: #33FF57;"></div>
+                학습 도로 라벨 (Ground Truth)
+            </label>
+        </div>
         
         <div class="stats-panel">
             <div class="stats-title">통계</div>
             <div id="stats-content">
                 <p><strong>Ovision 도로 면적:</strong> <span id="ovision-road-area">0</span> m²</p>
                 <p><strong>병합된 도로 면적:</strong> <span id="merged-road-area">0</span> m²</p>
+                <p><strong>U-Net 3 도로 면적:</strong> <span id="unet3-road-area">0</span> m²</p>
+                <p><strong>학습 도로 라벨 면적:</strong> <span id="ground-truth-road-area">0</span> m²</p>
             </div>
         </div>
     </div>
@@ -153,6 +171,8 @@
         // GeoJSON 파일 경로 (GitHub Pages용 raw URL)
         const ovisionRoadsGeojsonPath = 'https://raw.githubusercontent.com/kimpgithub/road-SEG-visualization/master/data/ovision_road_4326.geojson';
         const mergedRoadsGeojsonPath = 'https://raw.githubusercontent.com/kimpgithub/road-SEG-visualization/master/data/roads_merged_4326.geojson';
+        const unet3RoadsGeojsonPath = 'https://raw.githubusercontent.com/kimpgithub/road-SEG-visualization/master/data/unet3_roads_4326.geojson'; // 세 번째 U-Net 모델 결과 (가정)
+        const groundTruthRoadsGeojsonPath = 'https://raw.githubusercontent.com/kimpgithub/road-SEG-visualization/master/data/ground_truth_roads_4326.geojson'; // 학습 도로 라벨 (가정)
         
         // Mapbox 토큰
         const mapboxToken = 'pk.eyJ1Ijoia2ltcHlrMzY1IiwiYSI6ImNtMHZ0YjJreTFqMWkyanBsdG1rYzNna2EifQ.uO2Mr3dd8pnztKfGtZLFCw';
@@ -175,6 +195,8 @@
         let tilesetLoaded = false;
         let ovisionRoadsLoaded = false;
         let mergedRoadsLoaded = false;
+        let unet3RoadsLoaded = false;
+        let groundTruthRoadsLoaded = false;
 
         map.on('load', function() {
             map.fitBounds([
@@ -206,6 +228,8 @@
 
                 loadOvisionRoads();
                 loadMergedRoads();
+                loadUnet3Roads();
+                loadGroundTruthRoads();
             } catch (error) {
                 console.error('타일셋 로드 오류:', error);
                 document.getElementById('loading-indicator').querySelector('.loading-text').textContent = '타일셋 로드 실패';
@@ -272,7 +296,7 @@
             const loadingText = loadingIndicator.querySelector('.loading-text');
 
             loadingIndicator.style.display = 'flex';
-            loadingText.textContent = '병합된 도로 데이터 로딩 중...';
+            loadingText.textContent = 'DeepLapv3 도로 데이터 로딩 중...';
 
             fetch(mergedRoadsGeojsonPath)
                 .then(response => {
@@ -280,7 +304,7 @@
                     return response.json();
                 })
                 .then(data => {
-                    console.log('병합된 도로 데이터 로드 완료');
+                    console.log('DeepLapv3 도로 데이터 로드 완료');
 
                     map.addSource('merged-roads-source', {
                         'type': 'geojson',
@@ -307,8 +331,108 @@
                     loadingIndicator.style.display = 'none';
                 })
                 .catch(error => {
-                    console.error('병합된 도로 데이터 로드 오류:', error);
-                    loadingText.textContent = '병합된 도로 데이터 로드 실패';
+                    console.error('DeepLapv3 도로 데이터 로드 오류:', error);
+                    loadingText.textContent = 'DeepLapv3 도로 데이터 로드 실패';
+                    setTimeout(() => {
+                        loadingIndicator.style.display = 'none';
+                    }, 2000);
+                });
+        }
+
+        function loadUnet3Roads() {
+            if (unet3RoadsLoaded) return;
+
+            const loadingIndicator = document.getElementById('loading-indicator');
+            const loadingText = loadingIndicator.querySelector('.loading-text');
+
+            loadingIndicator.style.display = 'flex';
+            loadingText.textContent = 'U-Net 3 도로 데이터 로딩 중...';
+
+            fetch(unet3RoadsGeojsonPath)
+                .then(response => {
+                    if (!response.ok) throw new Error('U-Net 3 GeoJSON 로드 실패');
+                    return response.json();
+                })
+                .then(data => {
+                    console.log('U-Net 3 도로 데이터 로드 완료');
+
+                    map.addSource('unet3-roads-source', {
+                        'type': 'geojson',
+                        'data': data
+                    });
+
+                    map.addLayer({
+                        'id': 'unet3-roads-layer',
+                        'type': 'fill',
+                        'source': 'unet3-roads-source',
+                        'paint': {
+                            'fill-color': '#FF33A1', // 핑크 계열 색상
+                            'fill-opacity': 0.7,
+                            'fill-outline-color': '#CC0066'
+                        }
+                    });
+
+                    unet3RoadsLoaded = true;
+                    document.getElementById('unet3-roads').disabled = false;
+
+                    const area = turf.area(data);
+                    document.getElementById('unet3-road-area').textContent = Math.round(area);
+
+                    loadingIndicator.style.display = 'none';
+                })
+                .catch(error => {
+                    console.error('U-Net 3 도로 데이터 로드 오류:', error);
+                    loadingText.textContent = 'U-Net 3 도로 데이터 로드 실패';
+                    setTimeout(() => {
+                        loadingIndicator.style.display = 'none';
+                    }, 2000);
+                });
+        }
+
+        function loadGroundTruthRoads() {
+            if (groundTruthRoadsLoaded) return;
+
+            const loadingIndicator = document.getElementById('loading-indicator');
+            const loadingText = loadingIndicator.querySelector('.loading-text');
+
+            loadingIndicator.style.display = 'flex';
+            loadingText.textContent = '학습 도로 라벨 데이터 로딩 중...';
+
+            fetch(groundTruthRoadsGeojsonPath)
+                .then(response => {
+                    if (!response.ok) throw new Error('Ground Truth GeoJSON 로드 실패');
+                    return response.json();
+                })
+                .then(data => {
+                    console.log('학습 도로 라벨 데이터 로드 완료');
+
+                    map.addSource('ground-truth-roads-source', {
+                        'type': 'geojson',
+                        'data': data
+                    });
+
+                    map.addLayer({
+                        'id': 'ground-truth-roads-layer',
+                        'type': 'fill',
+                        'source': 'ground-truth-roads-source',
+                        'paint': {
+                            'fill-color': '#33FF57', // 초록 계열 색상
+                            'fill-opacity': 0.7,
+                            'fill-outline-color': '#00CC00'
+                        }
+                    });
+
+                    groundTruthRoadsLoaded = true;
+                    document.getElementById('ground-truth-roads').disabled = false;
+
+                    const area = turf.area(data);
+                    document.getElementById('ground-truth-road-area').textContent = Math.round(area);
+
+                    loadingIndicator.style.display = 'none';
+                })
+                .catch(error => {
+                    console.error('학습 도로 라벨 데이터 로드 오류:', error);
+                    loadingText.textContent = '학습 도로 라벨 데이터 로드 실패';
                     setTimeout(() => {
                         loadingIndicator.style.display = 'none';
                     }, 2000);
@@ -324,6 +448,18 @@
         document.getElementById('merged-roads').addEventListener('change', function(e) {
             if (mergedRoadsLoaded) {
                 map.setLayoutProperty('merged-roads-layer', 'visibility', e.target.checked ? 'visible' : 'none');
+            }
+        });
+
+        document.getElementById('unet3-roads').addEventListener('change', function(e) {
+            if (unet3RoadsLoaded) {
+                map.setLayoutProperty('unet3-roads-layer', 'visibility', e.target.checked ? 'visible' : 'none');
+            }
+        });
+
+        document.getElementById('ground-truth-roads').addEventListener('change', function(e) {
+            if (groundTruthRoadsLoaded) {
+                map.setLayoutProperty('ground-truth-roads-layer', 'visibility', e.target.checked ? 'visible' : 'none');
             }
         });
 
