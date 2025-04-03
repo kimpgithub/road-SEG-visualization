@@ -187,7 +187,10 @@
             loadingIndicator.style.display = 'flex';
             loadingText.textContent = 'Ovision 도로 데이터 로딩 중...';
             fetch(ovisionRoadsGeojsonPath)
-                .then(response => { if (!response.ok) throw new Error('Ovision GeoJSON 로드 실패'); return response.json(); })
+                .then(response => {
+                    if (!response.ok) throw new Error(`Ovision GeoJSON 로드 실패: ${response.status} ${response.statusText}`);
+                    return response.json();
+                })
                 .then(data => {
                     map.addSource('ovision-roads-source', { 'type': 'geojson', 'data': data });
                     map.addLayer({ 'id': 'ovision-roads-layer', 'type': 'fill', 'source': 'ovision-roads-source', 'paint': { 'fill-color': '#FF5733', 'fill-opacity': 0.7, 'fill-outline-color': '#FF0000' } });
@@ -198,7 +201,7 @@
                     loadingIndicator.style.display = 'none';
                 })
                 .catch(error => {
-                    console.error('Ovision 도로 데이터 로드 오류:', error);
+                    console.error('Ovision 도로 데이터 로드 오류:', error.message);
                     loadingText.textContent = 'Ovision 도로 데이터 로드 실패';
                     setTimeout(() => { loadingIndicator.style.display = 'none'; }, 2000);
                 });
@@ -211,7 +214,10 @@
             loadingIndicator.style.display = 'flex';
             loadingText.textContent = 'DeepLapv3 도로 데이터 로딩 중...';
             fetch(mergedRoadsGeojsonPath)
-                .then(response => { if (!response.ok) throw new Error('Merged GeoJSON 로드 실패'); return response.json(); })
+                .then(response => {
+                    if (!response.ok) throw new Error(`Merged GeoJSON 로드 실패: ${response.status} ${response.statusText}`);
+                    return response.json();
+                })
                 .then(data => {
                     map.addSource('merged-roads-source', { 'type': 'geojson', 'data': data });
                     map.addLayer({ 'id': 'merged-roads-layer', 'type': 'fill', 'source': 'merged-roads-source', 'paint': { 'fill-color': '#33A1FF', 'fill-opacity': 0.7, 'fill-outline-color': '#0000FF' } });
@@ -222,7 +228,7 @@
                     loadingIndicator.style.display = 'none';
                 })
                 .catch(error => {
-                    console.error('DeepLapv3 도로 데이터 로드 오류:', error);
+                    console.error('DeepLapv3 도로 데이터 로드 오류:', error.message);
                     loadingText.textContent = 'DeepLapv3 도로 데이터 로드 실패';
                     setTimeout(() => { loadingIndicator.style.display = 'none'; }, 2000);
                 });
@@ -235,7 +241,10 @@
             loadingIndicator.style.display = 'flex';
             loadingText.textContent = 'U-Net 3 도로 데이터 로딩 중...';
             fetch(unet3RoadsGeojsonPath)
-                .then(response => { if (!response.ok) throw new Error('U-Net 3 GeoJSON 로드 실패'); return response.json(); })
+                .then(response => {
+                    if (!response.ok) throw new Error(`U-Net 3 GeoJSON 로드 실패: ${response.status} ${response.statusText}`);
+                    return response.json();
+                })
                 .then(data => {
                     map.addSource('unet3-roads-source', { 'type': 'geojson', 'data': data });
                     map.addLayer({ 'id': 'unet3-roads-layer', 'type': 'fill', 'source': 'unet3-roads-source', 'paint': { 'fill-color': '#FF33A1', 'fill-opacity': 0.7, 'fill-outline-color': '#CC0066' } });
@@ -246,7 +255,7 @@
                     loadingIndicator.style.display = 'none';
                 })
                 .catch(error => {
-                    console.error('U-Net 3 도로 데이터 로드 오류:', error);
+                    console.error('U-Net 3 도로 데이터 로드 오류:', error.message);
                     loadingText.textContent = 'U-Net 3 도로 데이터 로드 실패';
                     setTimeout(() => { loadingIndicator.style.display = 'none'; }, 2000);
                 });
@@ -259,7 +268,10 @@
             loadingIndicator.style.display = 'flex';
             loadingText.textContent = '학습 도로 라벨 데이터 로딩 중...';
             fetch(groundTruthRoadsGeojsonPath)
-                .then(response => { if (!response.ok) throw new Error('Ground Truth GeoJSON 로드 실패'); return response.json(); })
+                .then(response => {
+                    if (!response.ok) throw new Error(`Ground Truth GeoJSON 로드 실패: ${response.status} ${response.statusText}`);
+                    return response.json();
+                })
                 .then(data => {
                     map.addSource('ground-truth-roads-source', { 'type': 'geojson', 'data': data });
                     map.addLayer({ 'id': 'ground-truth-roads-layer', 'type': 'fill', 'source': 'ground-truth-roads-source', 'paint': { 'fill-color': '#33FF57', 'fill-opacity': 0.7, 'fill-outline-color': '#00CC00' } });
@@ -270,7 +282,7 @@
                     loadingIndicator.style.display = 'none';
                 })
                 .catch(error => {
-                    console.error('학습 도로 라벨 데이터 로드 오류:', error);
+                    console.error('학습 도로 라벨 데이터 로드 오류:', error.message);
                     loadingText.textContent = '학습 도로 라벨 데이터 로드 실패';
                     setTimeout(() => { loadingIndicator.style.display = 'none'; }, 2000);
                 });
@@ -284,7 +296,10 @@
             loadingIndicator.style.display = 'flex';
             loadingText.textContent = 'Ovision 건물 데이터 로딩 중...';
             fetch(ovisionBuildingsGeojsonPath)
-                .then(response => { if (!response.ok) throw new Error('Ovision Buildings GeoJSON 로드 실패'); return response.json(); })
+                .then(response => {
+                    if (!response.ok) throw new Error(`Ovision Buildings GeoJSON 로드 실패: ${response.status} ${response.statusText}`);
+                    return response.json();
+                })
                 .then(data => {
                     map.addSource('ovision-buildings-source', { 'type': 'geojson', 'data': data });
                     map.addLayer({ 'id': 'ovision-buildings-layer', 'type': 'fill', 'source': 'ovision-buildings-source', 'paint': { 'fill-color': '#FF9800', 'fill-opacity': 0.7, 'fill-outline-color': '#F57C00' } });
@@ -295,7 +310,7 @@
                     loadingIndicator.style.display = 'none';
                 })
                 .catch(error => {
-                    console.error('Ovision 건물 데이터 로드 오류:', error);
+                    console.error('Ovision 건물 데이터 로드 오류:', error.message);
                     loadingText.textContent = 'Ovision 건물 데이터 로드 실패';
                     setTimeout(() => { loadingIndicator.style.display = 'none'; }, 2000);
                 });
@@ -308,7 +323,10 @@
             loadingIndicator.style.display = 'flex';
             loadingText.textContent = 'U-Net 건물 데이터 로딩 중...';
             fetch(unetBuildingsGeojsonPath)
-                .then(response => { if (!response.ok) throw new Error('U-Net Buildings GeoJSON 로드 실패'); return response.json(); })
+                .then(response => {
+                    if (!response.ok) throw new Error(`U-Net Buildings GeoJSON 로드 실패: ${response.status} ${response.statusText}`);
+                    return response.json();
+                })
                 .then(data => {
                     map.addSource('unet-buildings-source', { 'type': 'geojson', 'data': data });
                     map.addLayer({ 'id': 'unet-buildings-layer', 'type': 'fill', 'source': 'unet-buildings-source', 'paint': { 'fill-color': '#9C27B0', 'fill-opacity': 0.7, 'fill-outline-color': '#7B1FA2' } });
@@ -319,7 +337,7 @@
                     loadingIndicator.style.display = 'none';
                 })
                 .catch(error => {
-                    console.error('U-Net 건물 데이터 로드 오류:', error);
+                    console.error('U-Net 건물 데이터 로드 오류:', error.message);
                     loadingText.textContent = 'U-Net 건물 데이터 로드 실패';
                     setTimeout(() => { loadingIndicator.style.display = 'none'; }, 2000);
                 });
@@ -332,7 +350,10 @@
             loadingIndicator.style.display = 'flex';
             loadingText.textContent = '학습 건물 라벨 데이터 로딩 중...';
             fetch(groundTruthBuildingsGeojsonPath)
-                .then(response => { if (!response.ok) throw new Error('Ground Truth Buildings GeoJSON 로드 실패'); return response.json(); })
+                .then(response => {
+                    if (!response.ok) throw new Error(`Ground Truth Buildings GeoJSON 로드 실패: ${response.status} ${response.statusText}`);
+                    return response.json();
+                })
                 .then(data => {
                     map.addSource('ground-truth-buildings-source', { 'type': 'geojson', 'data': data });
                     map.addLayer({ 'id': 'ground-truth-buildings-layer', 'type': 'fill', 'source': 'ground-truth-buildings-source', 'paint': { 'fill-color': '#4CAF50', 'fill-opacity': 0.7, 'fill-outline-color': '#388E3C' } });
@@ -343,7 +364,7 @@
                     loadingIndicator.style.display = 'none';
                 })
                 .catch(error => {
-                    console.error('학습 건물 라벨 데이터 로드 오류:', error);
+                    console.error('학습 건물 라벨 데이터 로드 오류:', error.message);
                     loadingText.textContent = '학습 건물 라벨 데이터 로드 실패';
                     setTimeout(() => { loadingIndicator.style.display = 'none'; }, 2000);
                 });
