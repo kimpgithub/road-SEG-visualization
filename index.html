@@ -11,6 +11,7 @@
     
     <!-- Turf.js for GeoJSON processing -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Turf.js/6.5.0/turf.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pako/2.0.4/pako.min.js"></script>
 
     <style>
         body { margin: 0; padding: 0; }
@@ -137,7 +138,6 @@
         const ovisionBuildingsGeojsonPath = 'https://raw.githubusercontent.com/kimpgithub/road-SEG-visualization/master/data/ovision_buildings_4326.geojson';
         const unetBuildingsGeojsonPath = 'https://raw.githubusercontent.com/kimpgithub/road-SEG-visualization/master/data/unet_buildings_4326.geojson';
         const groundTruthBuildingsGeojsonPath = 'https://raw.githubusercontent.com/kimpgithub/road-SEG-visualization/master/data/ground_truth_buildings_4326.geojson';
-        const overfittingPreventedBuildingsGeojsonPath = 'https://github.com/kimpgithub/road-SEG-visualization/raw/master/data/overfitting_prevented_buildings_wgs84.geojson';
 
         const mapboxToken = 'pk.eyJ1Ijoia2ltcHlrMzY1IiwiYSI6ImNtMHZ0YjJreTFqMWkyanBsdG1rYzNna2EifQ.uO2Mr3dd8pnztKfGtZLFCw';
         mapboxgl.accessToken = mapboxToken;
@@ -391,12 +391,13 @@
             const loadingText = loadingIndicator.querySelector('.loading-text');
             loadingIndicator.style.display = 'flex';
             loadingText.textContent = 'Overfitting 방지 건물 데이터 로딩 중...';
-            fetch(overfittingPreventedBuildingsGeojsonPath)
-                .then(response => {
-                    if (!response.ok) throw new Error(`Overfitting Prevented Buildings GeoJSON 로드 실패: ${response.status} ${response.statusText}`);
-                    return response.json();
-                })
-                .then(data => {
+            
+            fetch('https://raw.githubusercontent.com/kimpgithub/road-SEG-visualization/master/data/overfitting_prevented_buildings_wgs84.geojson.gz')
+                .then(response => response.arrayBuffer())
+                .then(compressed => {
+                    const decompressed = pako.ungzip(compressed, { to: 'string' });
+                    const data = JSON.parse(decompressed);
+                    
                     map.addSource('overfitting-prevented-buildings-source', { 'type': 'geojson', 'data': data });
                     map.addLayer({ 'id': 'overfitting-prevented-buildings-layer', 'type': 'fill', 'source': 'overfitting-prevented-buildings-source', 'paint': { 'fill-color': '#E91E63', 'fill-opacity': 0.7, 'fill-outline-color': '#C2185B' } });
                     overfittingPreventedBuildingsLoaded = true;
