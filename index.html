@@ -95,6 +95,16 @@
                 U-Net 건물 탐지
             </label>
         </div>
+
+        <div class="layer-control">
+            <label>
+                <input type="checkbox" id="overfitting-prevented-buildings" checked disabled />
+                <div class="color-box" style="background-color: #E91E63;"></div>
+                Overfitting 방지 건물 탐지
+            </label>
+        </div>
+
+        
         <div class="layer-control">
             <label>
                 <input type="checkbox" id="ground-truth-buildings" checked disabled />
@@ -112,6 +122,7 @@
                 <p><strong>학습 도로 라벨 면적:</strong> <span id="ground-truth-road-area">0</span> m²</p>
                 <p><strong>Ovision 건물 면적:</strong> <span id="ovision-building-area">0</span> m²</p>
                 <p><strong>U-Net 건물 면적:</strong> <span id="unet-building-area">0</span> m²</p>
+                <p><strong>Overfitting 방지 건물 면적:</strong> <span id="overfitting-prevented-building-area">0</span> m²</p>
                 <p><strong>학습 건물 라벨 면적:</strong> <span id="ground-truth-building-area">0</span> m²</p>
             </div>
         </div>
@@ -126,6 +137,7 @@
         const ovisionBuildingsGeojsonPath = 'https://raw.githubusercontent.com/kimpgithub/road-SEG-visualization/master/data/ovision_buildings_4326.geojson';
         const unetBuildingsGeojsonPath = 'https://raw.githubusercontent.com/kimpgithub/road-SEG-visualization/master/data/unet_buildings_4326.geojson';
         const groundTruthBuildingsGeojsonPath = 'https://raw.githubusercontent.com/kimpgithub/road-SEG-visualization/master/data/ground_truth_buildings_4326.geojson';
+        const overfittingPreventedBuildingsGeojsonPath = 'https://raw.githubusercontent.com/kimpgithub/road-SEG-visualization/master/data/overfitting_prevented_buildings_wgs84.geojson';
 
         const mapboxToken = 'pk.eyJ1Ijoia2ltcHlrMzY1IiwiYSI6ImNtMHZ0YjJreTFqMWkyanBsdG1rYzNna2EifQ.uO2Mr3dd8pnztKfGtZLFCw';
         mapboxgl.accessToken = mapboxToken;
@@ -148,6 +160,7 @@
         let ovisionBuildingsLoaded = false;
         let unetBuildingsLoaded = false;
         let groundTruthBuildingsLoaded = false;
+        let overfittingPreventedBuildingsLoaded = false;
 
         map.on('load', function() {
             map.fitBounds([
@@ -177,6 +190,8 @@
             loadOvisionBuildings();
             loadUnetBuildings();
             loadGroundTruthBuildings();
+            loadOverfittingPreventedBuildings();
+
         });
 
         // 도로 데이터 로드 함수
@@ -370,6 +385,34 @@
                 });
         }
 
+        function loadOverfittingPreventedBuildings() {
+            if (overfittingPreventedBuildingsLoaded) return;
+            const loadingIndicator = document.getElementById('loading-indicator');
+            const loadingText = loadingIndicator.querySelector('.loading-text');
+            loadingIndicator.style.display = 'flex';
+            loadingText.textContent = 'Overfitting 방지 건물 데이터 로딩 중...';
+            fetch(overfittingPreventedBuildingsGeojsonPath)
+                .then(response => {
+                    if (!response.ok) throw new Error(`Overfitting Prevented Buildings GeoJSON 로드 실패: ${response.status} ${response.statusText}`);
+                    return response.json();
+                })
+                .then(data => {
+                    map.addSource('overfitting-prevented-buildings-source', { 'type': 'geojson', 'data': data });
+                    map.addLayer({ 'id': 'overfitting-prevented-buildings-layer', 'type': 'fill', 'source': 'overfitting-prevented-buildings-source', 'paint': { 'fill-color': '#E91E63', 'fill-opacity': 0.7, 'fill-outline-color': '#C2185B' } });
+                    overfittingPreventedBuildingsLoaded = true;
+                    document.getElementById('overfitting-prevented-buildings').disabled = false;
+                    const area = turf.area(data);
+                    document.getElementById('overfitting-prevented-building-area').textContent = Math.round(area);
+                    loadingIndicator.style.display = 'none';
+                })
+                .catch(error => {
+                    console.error('Overfitting 방지 건물 데이터 로드 오류:', error.message);
+                    loadingText.textContent = 'Overfitting 방지 건물 데이터 로드 실패';
+                    setTimeout(() => { loadingIndicator.style.display = 'none'; }, 2000);
+                });
+        }
+
+
         // 이벤트 리스너
         document.getElementById('ovision-roads').addEventListener('change', function(e) {
             if (ovisionRoadsLoaded) map.setLayoutProperty('ovision-roads-layer', 'visibility', e.target.checked ? 'visible' : 'none');
@@ -391,6 +434,9 @@
         });
         document.getElementById('ground-truth-buildings').addEventListener('change', function(e) {
             if (groundTruthBuildingsLoaded) map.setLayoutProperty('ground-truth-buildings-layer', 'visibility', e.target.checked ? 'visible' : 'none');
+        });
+        document.getElementById('overfitting-prevented-buildings').addEventListener('change', function(e) {
+            if (overfittingPreventedBuildingsLoaded) map.setLayoutProperty('overfitting-prevented-buildings-layer', 'visibility', e.target.checked ? 'visible' : 'none');
         });
         document.getElementById('drone-imagery').addEventListener('change', function(e) {
             if (tilesetLoaded) map.setLayoutProperty('raster-tiles', 'visibility', e.target.checked ? 'visible' : 'none');
